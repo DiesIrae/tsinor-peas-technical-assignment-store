@@ -102,7 +102,7 @@ export class Store implements IStore {
       throw Error(`Not allowed to read "${parentKey}" (full path "${path}")`);
 
     if (childrenKeys.length > 0) {
-      const childrenPath = childrenKeys.join(":");
+      const childrenPath = getPathFromKeys(childrenKeys);
 
       const value = this.read(parentKey);
 
