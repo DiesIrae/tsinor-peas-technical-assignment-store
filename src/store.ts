@@ -15,6 +15,8 @@ import {
   permissionMetadataKey,
 } from "./permission";
 
+export { Permission };
+
 export type StoreResult = Store | JSONPrimitive | undefined;
 
 export type StoreValue =
