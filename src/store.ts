@@ -25,6 +25,40 @@ export type StoreValue =
   | StoreResult
   | (() => StoreResult);
 
+function ensureIsStoreResultCompatible(value: unknown): StoreResult {
+  if (
+    !(
+      value === null ||
+      value === undefined ||
+      typeof value === "boolean" ||
+      typeof value === "number" ||
+      typeof value === "string" ||
+      typeof value === "object" ||
+      typeof value === "function"
+    )
+  )
+    throw new Error(`Type ${typeof value} is not JSON-compatible`);
+
+  if (typeof value === "object") {
+    if (!(value instanceof Store))
+      throw new Error("only store implementations are allowed");
+
+    // Not compatible with loops
+    // for (const [key, val] of Object.entries(value)) {
+    //   ensureIsStoreResultCompatible(val);
+    // }
+  }
+
+  return value;
+}
+function ensureIsStoreValueCompatible(value: unknown): StoreValue {
+  if (typeof value === "function") {
+    return ensureIsStoreResultCompatible(value());
+  } else if (typeof value === "object" && Array.isArray(value)) {
+    return value;
+  } else return ensureIsStoreResultCompatible(value);
+}
+
 export interface IStore {
   defaultPolicy: Permission;
   allowedToRead(key: string): boolean;
@@ -44,7 +78,7 @@ export class Store implements IStore {
 
   get(key: string): StoreValue {
     const value = this[key as keyof typeof this];
-    return value as StoreValue;
+    return ensureIsStoreValueCompatible(value);
   }
 
   set(key: string, value: StoreValue): void {
@@ -71,9 +105,6 @@ export class Store implements IStore {
       const childrenPath = childrenKeys.join(":");
 
       const value = this.read(parentKey);
-      console.log("r", "this", this);
-      console.log("r", parentKey);
-      console.log("r", "value", value);
 
       if (value instanceof Store) return value.read(childrenPath);
       else return getValueFromChildrenKeys(value, childrenKeys);
@@ -81,8 +112,8 @@ export class Store implements IStore {
       const value = this.get(path);
 
       const resolvedValue = typeof value === "function" ? value() : value;
-      // if (typeof value !== "string") throw new Error("vachier");
-      return resolvedValue as StoreResult;
+
+      return ensureIsStoreResultCompatible(resolvedValue);
     }
   }
 
@@ -98,9 +129,6 @@ export class Store implements IStore {
       const childrenPath = getPathFromKeys(childrenKeys);
 
       const childValue = this.get(parentKey);
-      console.log("w", "this", this);
-      console.log("w", parentKey);
-      console.log("w", "childValue", childValue);
 
       if (childValue instanceof Store) childValue.write(childrenPath, value);
       else {
